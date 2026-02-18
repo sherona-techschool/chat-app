@@ -1,0 +1,564 @@
+:root {
+  /* Colors */
+  --primary-color: #0066ff;
+  /* Chat Bubble Blue */
+  --primary-hover: #0056b3;
+  --bg-color: #f7f9fc;
+  /* Light Grayish Blue Background for whole app */
+  --sidebar-bg: #ffffff;
+  --nav-rail-bg: #ffffff;
+  /* Or slight off-white */
+  --chat-bg: #f0f4f8;
+  /* Chat area background */
+  --text-primary: #1a1b1e;
+  --text-secondary: #6e7a8a;
+  --divider-color: #eaeef2;
+  --input-bg: #ffffff;
+  --active-chat-bg: #eff6ff;
+
+  --sender-bubble: #0066ff;
+  --sender-text: #ffffff;
+  --receiver-bubble: #ffffff;
+  --receiver-text: #1a1b1e;
+
+  --online-status: #10b981;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--bg-color);
+}
+
+/* Typography */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--text-primary);
+}
+
+p {
+  color: var(--text-secondary);
+}
+
+/* Common Utilities */
+.btn-icon {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--primary-color);
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background-color: #e0e7ff;
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+  position: relative;
+}
+
+.status-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
+.status-online {
+  background-color: var(--online-status);
+}
+
+.status-offline {
+  background-color: #ccc;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Auth Layout */
+.auth-wrapper {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Left Side */
+.auth-left {
+  flex: 1;
+  background-color: var(--primary-color);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 60px;
+  position: relative;
+}
+
+.brand-content h1 {
+  font-size: 24px;
+  margin-bottom: 40px;
+  color: white;
+}
+
+.brand-content h2 {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 20px;
+  color: white;
+}
+
+.brand-content p {
+  font-size: 18px;
+  opacity: 0.9;
+  max-width: 400px;
+  color: white;
+}
+
+.illustration-placeholder {
+  margin-top: 60px;
+  background: rgba(255, 255, 255, 0.1);
+  height: 300px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Right Side */
+.auth-right {
+  flex: 1;
+  background-color: var(--bg-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.auth-box {
+  background: white;
+  padding: 40px;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 450px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.auth-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--text-primary);
+}
+
+.auth-subtitle {
+  color: var(--text-secondary);
+  margin-bottom: 30px;
+  font-size: 14px;
+}
+
+.auth-toggle {
+  background: #f3f4f6;
+  padding: 4px;
+  border-radius: 8px;
+  display: flex;
+  margin-bottom: 30px;
+}
+
+.toggle-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.toggle-btn.active {
+  background: white;
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--divider-color);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+  border-color: var(--primary-color);
+}
+
+.auth-submit {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-footer {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.link {
+  color: var(--primary-color);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.error-msg {
+  background: #fee2e2;
+  color: #dc2626;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-header h3 {
+  margin: 0;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.btn-secondary {
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.avatar-preview {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-top: 10px;
+  border: 2px solid var(--primary-color);
+}
+
+/* Profile Sidebar */
+.profile-sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 999;
+  /* Transparent overlay to catch clicks outside */
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.profile-sidebar {
+  position: fixed;
+  top: 0;
+  /* Left aligned next to NavRail (64px) */
+  left: 64px;
+  width: 350px;
+  height: 100vh;
+  background: white;
+  border-right: 1px solid var(--divider-color);
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--divider-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.profile-content {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.profile-avatar-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.profile-avatar-large {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #eff6ff;
+}
+
+.profile-details {
+  text-align: center;
+}
+
+.profile-name {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  background: #eff6ff;
+  color: var(--primary-color);
+  font-weight: 600;
+  text-transform: capitalize;
+  margin-bottom: 20px;
+}
+
+.profile-section {
+  text-align: left;
+  margin-bottom: 20px;
+  background: #f8fafc;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.profile-section label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.profile-bio {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.full-width {
+  width: 100%;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.form-actions button {
+  flex: 1;
+}
+
+.profile-content-scroll {
+  overflow-y: auto;
+  max-height: 70vh;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .profile-sidebar {
+    left: 0;
+    width: 100%;
+  }
+
+  .app-container {
+    flex-direction: column;
+  }
+
+  /* ... existing responsive code ... */
+
+  .nav-rail-wrapper {
+    order: 2;
+    /* Move to bottom */
+    width: 100%;
+    height: 60px;
+    border-right: none;
+    border-top: 1px solid var(--divider-color);
+  }
+
+  /* Retarget NavRail container styles if they are inline, we might need to override or handle via JS isMobile prop handling in NavRail.
+     For now, since NavRail uses inline styles, we need to hope the wrapper handles basic layout, 
+     but the internal NavRail flex direction needs to change to row for bottom bar. 
+     This suggests I should pass `isMobile` to NavRail or use CSS classes instead of inline styles in NavRail. 
+     Let's stick to hiding it for now as per my simpler plan or just keeping it side if it fits. 
+     The USER asked for responsive mobile view. A left sidebar on mobile is bad. 
+     Let's try to make it a bottom bar or just hide it if 'mobile-hidden' is used.
+     Wait, I used 'mobile-hidden' in Chat.jsx for nav-rail-wrapper.
+  */
+
+  .mobile-hidden {
+    display: none !important;
+  }
+
+  /* Auth Page Responsive */
+  .auth-wrapper {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .auth-left {
+    display: none;
+    /* Hide brand side on mobile to save space */
+  }
+
+  .auth-right {
+    padding: 20px;
+  }
+
+  .auth-box {
+    box-shadow: none;
+    padding: 0;
+  }
+}

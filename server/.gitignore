@@ -1,0 +1,9 @@
+# Dependencies
+node_modules/
+.env
+verify_env.js
+test_users_api.js
+test_socket_flow.js
+reproduce_login.js
+package-lock.json
+package.json
