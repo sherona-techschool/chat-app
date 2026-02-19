@@ -152,7 +152,7 @@ const styles = {
     remoteVideo: {
         width: '100%',
         height: '100%',
-        objectFit: 'contain',
+        objectFit: 'cover',
     },
     placeholderRemote: {
         display: 'flex',
@@ -177,7 +177,7 @@ const styles = {
     localVideo: {
         width: '100%',
         height: '100%',
-        objectFit: 'contain',
+        objectFit: 'cover',
         transform: 'scaleX(-1)', // Mirror the self-view
         filter: 'brightness(1.1) contrast(1.1)', // Enhance visibility
     },
