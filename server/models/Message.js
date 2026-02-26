@@ -21,7 +21,7 @@ const messageSchema = new mongoose.Schema({
         default: 'text'
     },
     callDuration: {
-        type: Number, // in seconds
+        type: Number, 
         default: 0
     },
     fileUrl: {

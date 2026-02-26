@@ -56,7 +56,7 @@ const Auth = ({ onLogin }) => {
 
         const body = isLogin
             ? { email: formData.email, password: formData.password }
-            : formData; // All fields for register
+            : formData; 
 
         console.log('Sending Auth Request:', { endpoint, body });
 

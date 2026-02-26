@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema(
         email: { type: String, required: true, unique: true, lowercase: true },
         phone: { type: String, required: true, unique: true },
 
-        password: { type: String, required: true }, // Changed from passwordHash to password to match user request (will still store hash)
+        password: { type: String, required: true }, 
         avatar: { type: String, default: "" },
         bio: { type: String, default: "Hey there! I am using ChatApp" },
 

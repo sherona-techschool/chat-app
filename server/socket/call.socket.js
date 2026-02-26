@@ -1,85 +1,77 @@
+
 const Message = require('../models/Message');
 
-module.exports = (io, socket, users) => {
-    // CALL USER
-    // CALL USER
-    socket.on('call-user', (data) => {
-        // data: { from, to, signal, name, type }
-        const receiverSocketId = users.get(data.to);
-        if (receiverSocketId) {
-            io.to(receiverSocketId).emit('call-user', {
-                from: data.from,
-                signal: data.signal,
-                name: data.name,
-                type: data.type // 'video' or 'audio'
-            });
-            console.log(`Call request (${data.type}) from ${data.from} to ${data.to}`);
-        }
+const isObjectId = (str) => /^[a-f\d]{24}$/i.test(String(str));
+
+module.exports = (io, socket, onlineUsers) => {
+
+  const emitToUser = (mongoId, event, payload) => {
+    if (!mongoId) return;
+    console.log(`  [emit] → room:"${mongoId}" event:"${event}"`);
+    io.to(String(mongoId)).emit(event, payload);
+  };
+
+  const resolveMongoId = (value) => {
+    if (!value) return null;
+    if (isObjectId(value)) return String(value);
+    for (const [mongoId, sid] of onlineUsers.entries()) {
+      if (sid === value) return mongoId;
+    }
+    return io.sockets.sockets.get(value)?.userId || null;
+  };
+
+  socket.on('call-user', (data) => {
+    console.log(`[call-user] from:"${data.from}" to:"${data.to}" name:"${data.callerName}"`);
+    emitToUser(data.to, 'call-user', {
+      from:       data.from,
+      offer:      data.offer,
+      type:       data.type,
+      callerName: data.callerName,
     });
+  });
 
-    socket.on('call-accepted', (data) => {
-        // data: { from, to } - 'from' is the one accepting (callee), 'to' is caller
-        const callerSocketId = users.get(data.to);
-        if (callerSocketId) {
-            io.to(callerSocketId).emit('call-accepted', { from: data.from });
-        }
+  socket.on('webrtc-answer', (data) => {
+    console.log(`[webrtc-answer] from:"${data.from}" to:"${data.to}"`);
+    emitToUser(data.to, 'webrtc-answer', {
+      from:   data.from,
+      answer: data.answer,
     });
+  });
 
-    socket.on('call-rejected', (data) => {
-        const callerSocketId = users.get(data.to);
-        if (callerSocketId) {
-            io.to(callerSocketId).emit('call-rejected', { from: data.from });
-        }
+  socket.on('ice-candidate', (data) => {
+    emitToUser(data.to, 'ice-candidate', {
+      from:      data.from,
+      candidate: data.candidate,
     });
+  });
 
-    socket.on('webrtc-offer', (data) => {
-        const socketId = users.get(data.to);
-        if (socketId) {
-            io.to(socketId).emit('webrtc-offer', { from: data.from, offer: data.offer });
-        }
-    });
+  socket.on('call-rejected', (data) => {
+    emitToUser(data.to, 'call-rejected', { from: data.from });
+  });
 
-    socket.on('webrtc-answer', (data) => {
-        const socketId = users.get(data.to);
-        if (socketId) {
-            io.to(socketId).emit('webrtc-answer', { from: data.from, answer: data.answer });
-        }
-    });
+  socket.on('end-call', async (data) => {
+    console.log(`[end-call] from:"${data.from}" to:"${data.to}"`);
+    emitToUser(data.to, 'end-call', { from: data.from });
 
-    socket.on('ice-candidate', (data) => {
-        const socketId = users.get(data.to);
-        if (socketId) {
-            io.to(socketId).emit('ice-candidate', { from: data.from, candidate: data.candidate });
-        }
-    });
+    const senderMongoId   = socket.userId || resolveMongoId(data.from);
+    const receiverMongoId = resolveMongoId(data.to);
 
-    socket.on('end-call', async (data) => {
-        const socketId = users.get(data.to);
-        if (socketId) {
-            io.to(socketId).emit('end-call', { from: data.from });
-        }
+    if (!senderMongoId || !receiverMongoId) {
+      console.warn('[end-call] Cannot resolve mongo IDs — skipping DB save');
+      return;
+    }
 
-        // Save Call History
-        // data.from = user who ended the call? Or do we rely on the context? 
-        // Usually 'end-call' is sent by one peer. 
-        // We'll create a message from the sender to value 'to'.
-        // This is a simplification. Ideally, we track start/end time.
-        // For now, just log "Call Ended"
-        try {
-            if (data.from && data.to) {
-                // Find IDs if possible, or assume they are IDs. 
-                // socket.on('call-user', { from: socket.userId, ... }) so these are probably userIds.
-
-                await Message.create({
-                    sender: data.from,
-                    receiver: data.to,
-                    content: data.callType === 'audio' ? 'Audio Call ended' : 'Video Call ended',
-                    type: data.callType === 'audio' ? 'audio_call' : 'video_call',
-                    callDuration: 0
-                });
-            }
-        } catch (err) {
-            console.error('Error saving call history:', err);
-        }
-    });
+    try {
+      await Message.create({
+        sender:       senderMongoId,
+        receiver:     receiverMongoId,
+        content:      data.callType === 'audio' ? 'Audio call ended' : 'Video call ended',
+        type:         data.callType === 'audio' ? 'audio_call' : 'video_call',
+        callDuration: data.duration || 0,
+      });
+      console.log('[end-call] ✅ Saved');
+    } catch (err) {
+      console.error('[end-call] DB save failed:', err.message);
+    }
+  });
 };

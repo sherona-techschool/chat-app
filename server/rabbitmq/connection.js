@@ -17,7 +17,7 @@ const connectRabbitMQ = async () => {
       console.log('RabbitMQ Connection Closed. Reconnecting...');
       setTimeout(connectRabbitMQ, 5000); // Retry after 5s
     });
-
+  
     channel = await connection.createChannel();
 
     // Handle Channel Errors

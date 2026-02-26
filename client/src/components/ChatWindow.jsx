@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import MessageInput from './MessageInput';
 import { BsCameraVideo, BsTelephone, BsSearch, BsThreeDotsVertical, BsEmojiSmile, BsMic, BsPaperclip, BsCheck, BsCheckAll } from 'react-icons/bs';
 
-const ChatWindow = ({ messages, currentChat, onSendMessage, onVideoCall, isTyping, onTyping }) => {
+const ChatWindow = ({ messages, currentChat, onSendMessage, onVideoCall, onAudioCall, isTyping, onTyping }) => {
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
@@ -39,7 +39,7 @@ const ChatWindow = ({ messages, currentChat, onSendMessage, onVideoCall, isTypin
                     <button onClick={onVideoCall} style={styles.iconBtn} title="Video Call">
                         <BsCameraVideo size={20} />
                     </button>
-                    <button style={styles.iconBtn} title="Voice Call">
+                    <button onClick={onAudioCall} style={styles.iconBtn} title="Voice Call">
                         <BsTelephone size={18} />
                     </button>
                     <div style={styles.divider}></div>

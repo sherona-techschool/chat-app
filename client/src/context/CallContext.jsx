@@ -1,307 +1,388 @@
-import React, { createContext, useState, useRef, useEffect, useContext } from 'react';
-import { SocketContext } from './SocketContext';
 
-const CallContext = createContext();
+import React, {
+  createContext, useState, useRef, useEffect, useContext, useCallback
+} from "react";
+import { SocketContext } from "./SocketContext";
 
-const CallProvider = ({ children }) => {
-    const { socket } = useContext(SocketContext);
-    const [call, setCall] = useState({});
-    const [callAccepted, setCallAccepted] = useState(false);
-    const [callEnded, setCallEnded] = useState(false);
-    const [stream, setStream] = useState(null);
-    const [remoteStream, setRemoteStream] = useState(null);
-    const [name, setName] = useState('');
-    const [myVideo, setMyVideo] = useState(null);
-    const [userVideo, setUserVideo] = useState(null);
-    const [connectionRef, setConnectionRef] = useState(null);
-    const [isCalling, setIsCalling] = useState(false);
-    const [callType, setCallType] = useState('video');
-    const [callTo, setCallTo] = useState(null); // ID of person we are calling
+export const CallContext = createContext();
 
-    // Refs for current values in callbacks
-    const socketRef = useRef();
-    socketRef.current = socket;
-
-    useEffect(() => {
-        if (!socket) return;
-
-        socket.on('call-user', ({ from, signal, type }) => {
-            console.log('Incoming call from', from, 'type:', type);
-            setCall({ isReceivingCall: true, from, signal, type });
-            setCallType(type || 'video');
-        });
-
-        socket.on('end-call', () => {
-            resetCallState();
-        });
-
-        // We need to handle other events too inside the peer connection logic or here
-    }, [socket]);
-
-    const answerCall = async () => {
-        setCallAccepted(true);
-        const peer = createPeerConnection(call.from);
-
-        // Get local stream based on call type
-        // If it's an audio call, video: false
-        const isVideo = call.type === 'video' || callType === 'video';
-
-        try {
-            const currentStream = await navigator.mediaDevices.getUserMedia({
-                video: isVideo ? {
-                    facingMode: 'user',
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
-                    advanced: [{ focusMode: 'continuous' }]
-                } : false,
-                audio: true
-            });
-            setStream(currentStream);
-
-            // Only attach to video element if video is present
-            if (isVideo && myVideo && myVideo.current) {
-                myVideo.current.srcObject = currentStream;
-            } else if (myVideo && myVideo.srcObject) {
-                // Clear previous stream if any
-                myVideo.srcObject = null;
-            }
-
-            currentStream.getTracks().forEach(track => peer.addTrack(track, currentStream));
-
-            // Answer logic continues in createPeerConnection or triggered by caller's offer
-        } catch (err) {
-            console.error("Error accessing media devices", err);
-        }
-    };
-
-
-    // const [callType, setCallType] = useState('video'); // 'video' or 'audio' - This line is a duplicate and should be removed if it's not intended to be a separate state. Assuming the one at the top is the correct one.
-
-    // ...
-
-    const callUser = async (id) => {
-        setIsCalling(true);
-        setCallType('video');
-        setCallTo(id);
-
-        const peer = createPeerConnection(id);
-
-        const currentStream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: 'user',
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-                advanced: [{ focusMode: 'continuous' }]
-            },
-            audio: true
-        });
-        setStream(currentStream);
-        if (myVideo) myVideo.srcObject = currentStream;
-
-        currentStream.getTracks().forEach(track => peer.addTrack(track, currentStream));
-
-        const offer = await peer.createOffer();
-        await peer.setLocalDescription(offer);
-
-        socket.emit('call-user', { from: socket.userId, to: id, type: 'video' });
-        socket.emit('webrtc-offer', { from: socket.userId, to: id, offer });
-    };
-
-    const callUserAudio = async (id) => {
-        setIsCalling(true);
-        setCallType('audio');
-        setCallTo(id);
-
-        const peer = createPeerConnection(id);
-
-        const currentStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-        setStream(currentStream);
-        // if (myVideo) myVideo.srcObject = currentStream; // No video for audio call
-
-        currentStream.getTracks().forEach(track => peer.addTrack(track, currentStream));
-
-        const offer = await peer.createOffer();
-        await peer.setLocalDescription(offer);
-
-        socket.emit('call-user', { from: socket.userId, to: id, type: 'audio' });
-        socket.emit('webrtc-offer', { from: socket.userId, to: id, offer });
-    };
-
-    const resetCallState = () => {
-        setCallEnded(true);
-        if (connectionRef) {
-            connectionRef.close();
-            setConnectionRef(null);
-        }
-        setStream(null);
-        setRemoteStream(null);
-        setCallAccepted(false);
-        setIsCalling(false);
-        setCall({});
-        setCallTo(null);
-    };
-
-    const leaveCall = () => {
-        const targetId = call.from || callTo;
-        if (targetId) {
-            socket.emit('end-call', { from: socket.userId, to: targetId, callType });
-        }
-        resetCallState();
-    };
-
-    const createPeerConnection = (remoteUserId) => {
-        const turnIp = import.meta.env.VITE_TURN_IP;
-        const turnPort = import.meta.env.VITE_TURN_PORT;
-        const turnUser = import.meta.env.VITE_TURN_USERNAME;
-        const turnPassword = import.meta.env.VITE_TURN_PASSWORD;
-
-        const peer = new RTCPeerConnection({
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                {
-                    urls: `turn:${turnIp}:${turnPort}?transport=udp`,
-                    username: turnUser,
-                    credential: turnPassword
-                },
-                {
-                    urls: `turn:${turnIp}:${turnPort}?transport=tcp`,
-                    username: turnUser,
-                    credential: turnPassword
-                }
-            ]
-        });
-
-        setConnectionRef(peer);
-
-        peer.onicecandidate = (event) => {
-            if (event.candidate) {
-                socket.emit('ice-candidate', { from: socket.userId, to: remoteUserId, candidate: event.candidate });
-            }
-        };
-
-        peer.ontrack = (event) => {
-            console.log('Got remote stream', event.streams[0]);
-            setRemoteStream(event.streams[0]);
-        };
-
-        // Socket listeners for this specific peer
-        socket.on('webrtc-offer', async ({ offer }) => {
-            if (!peer.currentRemoteDescription) {
-                await peer.setRemoteDescription(new RTCSessionDescription(offer));
-                const answer = await peer.createAnswer();
-                await peer.setLocalDescription(answer);
-                socket.emit('webrtc-answer', { from: socket.userId, to: remoteUserId, answer });
-            }
-        });
-
-        socket.on('webrtc-answer', async ({ answer }) => {
-            await peer.setRemoteDescription(new RTCSessionDescription(answer));
-        });
-
-        socket.on('ice-candidate', async ({ candidate }) => {
-            try {
-                await peer.addIceCandidate(new RTCIceCandidate(candidate));
-            } catch (e) {
-                console.error('Error adding received ice candidate', e);
-            }
-        });
-
-        socket.on('call-accepted', () => {
-            setCallAccepted(true);
-        });
-
-        // socket.on('end-call') moved to global useEffect
-
-        return peer;
-    };
-
-
-
-    const toggleAudio = () => {
-        if (stream) {
-            stream.getAudioTracks().forEach(track => track.enabled = !track.enabled);
-        }
-    };
-
-    const toggleVideo = () => {
-        if (stream) {
-            stream.getVideoTracks().forEach(track => track.enabled = !track.enabled);
-        }
-    };
-
-    const shareScreen = async () => {
-        try {
-            const screenStream = await navigator.mediaDevices.getDisplayMedia({ cursor: true });
-            const screenTrack = screenStream.getVideoTracks()[0];
-
-            if (connectionRef) {
-                const senders = connectionRef.getSenders();
-                const sender = senders.find(s => s.track.kind === 'video');
-                if (sender) {
-                    sender.replaceTrack(screenTrack);
-                }
-            }
-
-            // Update local view
-            if (myVideo) myVideo.srcObject = screenStream;
-            setStream(screenStream);
-
-            screenTrack.onended = () => {
-                stopScreenShare();
-            };
-
-        } catch (error) {
-            console.error("Failed to share screen", error);
-        }
-    };
-
-    const stopScreenShare = async () => {
-        const webcamStream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: 'user',
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            },
-            audio: true
-        });
-        const videoTrack = webcamStream.getVideoTracks()[0];
-
-        if (connectionRef) {
-            const senders = connectionRef.getSenders();
-            const sender = senders.find(s => s.track.kind === 'video');
-            if (sender) {
-                sender.replaceTrack(videoTrack);
-            }
-        }
-
-        if (myVideo) myVideo.srcObject = webcamStream;
-        setStream(webcamStream);
-    };
-
-    return (
-        <CallContext.Provider value={{
-            call,
-            callAccepted,
-            myVideo: (el) => setMyVideo(el),
-            userVideo: (el) => setUserVideo(el),
-            stream,
-            remoteStream,
-            name,
-            setName,
-            callEnded,
-            isCalling,
-            callUser,
-            callUserAudio,
-            answerCall,
-            leaveCall,
-            toggleAudio,
-            toggleVideo,
-            shareScreen,
-            callType
-        }}>
-            {children}
-        </CallContext.Provider>
-    );
+const getRTCConfig = () => {
+  const IP   = import.meta.env.VITE_TURN_SERVER_IP;
+  const PORT = import.meta.env.VITE_TURN_SERVER_PORT || "3478";
+  const USER = import.meta.env.VITE_TURN_USERNAME;
+  const PASS = import.meta.env.VITE_TURN_PASSWORD;
+  return {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      {
+        urls: [
+          `turn:${IP}:${PORT}`,
+          `turn:${IP}:${PORT}?transport=tcp`,
+        ],
+        username:   USER,
+        credential: PASS,
+      },
+    ],
+    iceCandidatePoolSize: 10,
+  };
 };
 
-export { CallProvider, CallContext };
+export const CallProvider = ({ children }) => {
+  const { socket } = useContext(SocketContext);
+
+  const connectionRef        = useRef(null);
+  const myVideo              = useRef(null);
+  const userVideo            = useRef(null);
+  const pendingOfferRef      = useRef(null);
+  const streamRef            = useRef(null);
+  const remoteStreamRef      = useRef(null);
+  const myMongoIdRef         = useRef(null);
+  const remoteUserIdRef      = useRef(null);
+  const remoteIceBuffer      = useRef([]);
+  const localIceBuffer       = useRef([]);
+  const isRemoteDescSetRef   = useRef(false);
+
+  const [call,         setCall]         = useState({});
+  const [callAccepted, setCallAccepted] = useState(false);
+  const [callEnded,    setCallEnded]    = useState(false);
+  const [stream,       setStream]       = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
+  const [callType,     setCallType]     = useState("video");
+  const [callTo,       setCallTo]       = useState(null);
+  const [isCalling,    setIsCalling]    = useState(false);
+
+  const myId = () => myMongoIdRef.current;
+
+  const safeAssign = (ref, mediaStream) => {
+    if (ref.current && mediaStream && ref.current.srcObject !== mediaStream) {
+      ref.current.srcObject = mediaStream;
+    }
+  };
+
+  const reattachStreams = useCallback(() => {
+    safeAssign(myVideo,   streamRef.current);
+    safeAssign(userVideo, remoteStreamRef.current);
+  }, []);
+
+  const flushLocalIce = useCallback((toMongoId) => {
+    const buf = localIceBuffer.current;
+    if (buf.length > 0) {
+      console.log(`[ICE] flushing ${buf.length} local candidates to`, toMongoId);
+      buf.forEach(candidate => {
+        socket.emit("ice-candidate", { from: myId(), to: toMongoId, candidate });
+      });
+      localIceBuffer.current = [];
+    }
+  }, [socket]);
+
+  const drainRemoteIce = useCallback(async (pc) => {
+    const queue = remoteIceBuffer.current;
+    if (queue.length > 0) {
+      console.log(`[ICE] draining ${queue.length} remote candidates`);
+      for (const c of queue) {
+        try { await pc.addIceCandidate(new RTCIceCandidate(c)); }
+        catch (e) { if (!e.message?.includes("end-of-candidates")) console.warn("[ICE] drain:", e.message); }
+      }
+      remoteIceBuffer.current = [];
+    }
+  }, []);
+
+  // SOCKET LISTENERS
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on("user-id", ({ userId }) => {
+      console.log("[Auth] My mongoId:", userId);
+      myMongoIdRef.current = userId;
+    });
+
+    socket.on("call-user", ({ from, offer, type, callerName }) => {
+      console.log("[Signal] ← call-user from:", from, "name:", callerName);
+      setCallEnded(false);
+      setCallType(type || "video");
+      setCall({ isReceivingCall: true, from, type, callerName });
+      pendingOfferRef.current = { senderMongoId: from, offer, type };
+    });
+
+    socket.on("webrtc-answer", async ({ from, answer }) => {
+      console.log("[Signal] ← webrtc-answer from:", from);
+      setCallAccepted(true);
+      const pc = connectionRef.current;
+      if (!pc) return;
+      const state = pc.signalingState;
+      if (state === "stable" || state === "closed") {
+        console.warn("[WebRTC] answer ignored, state:", state);
+        return;
+      }
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        console.log("[WebRTC] ✅ Remote desc set on SENDER");
+        isRemoteDescSetRef.current = true;
+        await drainRemoteIce(pc);
+        flushLocalIce(from);
+      } catch (err) {
+        console.error("[WebRTC] setRemoteDescription failed:", err);
+      }
+    });
+
+    socket.on("ice-candidate", async ({ candidate }) => {
+      if (!candidate) return;
+      const pc = connectionRef.current;
+      if (!pc || !isRemoteDescSetRef.current) {
+        console.log("[ICE] buffering remote candidate");
+        remoteIceBuffer.current.push(candidate);
+        return;
+      }
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (err) {
+        if (!err.message?.includes("end-of-candidates"))
+          console.warn("[ICE] addIceCandidate error:", err.message);
+      }
+    });
+
+    socket.on("end-call", () => resetCall());
+
+    return () => {
+      socket.off("user-id");
+      socket.off("call-user");
+      socket.off("webrtc-answer");
+      socket.off("ice-candidate");
+      socket.off("end-call");
+    };
+  }, [socket, drainRemoteIce, flushLocalIce]);
+
+  
+  // CREATE PEER CONNECTION
+
+  const createPeerConnection = (remoteMongoId) => {
+    if (connectionRef.current) {
+      connectionRef.current.close();
+      connectionRef.current = null;
+    }
+    remoteUserIdRef.current    = remoteMongoId;
+    remoteIceBuffer.current    = [];
+    localIceBuffer.current     = [];
+    isRemoteDescSetRef.current = false;
+
+    const pc = new RTCPeerConnection(getRTCConfig());
+    connectionRef.current = pc;
+
+    pc.onicecandidate = ({ candidate }) => {
+      if (!candidate) { console.log("[ICE] Gathering complete"); return; }
+      console.log(`[ICE] → type:${candidate.type} proto:${candidate.protocol}`);
+      if (isRemoteDescSetRef.current) {
+        socket.emit("ice-candidate", { from: myId(), to: remoteMongoId, candidate: candidate.toJSON() });
+      } else {
+        localIceBuffer.current.push(candidate.toJSON());
+      }
+    };
+
+    pc.ontrack = ({ streams, track }) => {
+      console.log("[WebRTC] ← ontrack kind:", track.kind);
+      const incoming = streams?.[0];
+      if (incoming) {
+        remoteStreamRef.current = incoming;
+        setRemoteStream(incoming);
+        safeAssign(userVideo, incoming);
+        if (userVideo.current) userVideo.current.play().catch(() => {});
+      } else {
+        if (!remoteStreamRef.current) remoteStreamRef.current = new MediaStream();
+        remoteStreamRef.current.addTrack(track);
+        const updated = new MediaStream(remoteStreamRef.current.getTracks());
+        setRemoteStream(updated);
+        safeAssign(userVideo, updated);
+      }
+    };
+
+    pc.onconnectionstatechange = () => {
+      const s = pc.connectionState;
+      console.log("[WebRTC] connectionState:", s);
+      if (s === "connected") console.log("[WebRTC] ✅ Video flowing!");
+      if (s === "failed") pc.restartIce();
+      if (s === "disconnected") {
+        setTimeout(() => {
+          if (connectionRef.current?.connectionState === "disconnected")
+            connectionRef.current.restartIce();
+        }, 3000);
+      }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.log("[ICE] state:", pc.iceConnectionState);
+      if (pc.iceConnectionState === "failed") pc.restartIce();
+    };
+
+    pc.onsignalingstatechange = () =>
+      console.log("[WebRTC] signalingState:", pc.signalingState);
+
+    return pc;
+  };
+
+
+  // GET LOCAL STREAM
+
+  const getLocalStream = async (videoEnabled) => {
+    if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+    const s = await navigator.mediaDevices.getUserMedia({
+      video: videoEnabled ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false,
+      audio: { echoCancellation: true, noiseSuppression: true },
+    });
+    streamRef.current = s;
+    setStream(s);
+    safeAssign(myVideo, s);
+    if (myVideo.current) myVideo.current.play().catch(() => {});
+    return s;
+  };
+
+
+  // CALL USER — SENDER
+
+  const callUser = async (id, callerName) => {
+    console.log("[callUser] calling:", id, "myId:", myId());
+
+    if (!myId()) {
+      console.error("[callUser] ❌ myMongoId not set yet — socket user-id event not received");
+      return;
+    }
+    if (!id) {
+      console.error("[callUser] ❌ target user id is empty");
+      return;
+    }
+
+    setCallEnded(false);
+    setIsCalling(true);
+    setCallType("video");
+    setCallTo(id);
+
+    const localStream = await getLocalStream(true);
+    const peer        = createPeerConnection(id);
+
+    localStream.getTracks().forEach(t => {
+      peer.addTrack(t, localStream);
+      console.log("[WebRTC] → added track:", t.kind);
+    });
+
+    await new Promise(r => setTimeout(r, 200));
+
+    const offer = await peer.createOffer({
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: true,
+    });
+    await peer.setLocalDescription(offer);
+
+    console.log("[Signal] → call-user from:", myId(), "to:", id);
+    socket.emit("call-user", {
+      from:       myId(),
+      to:         id,
+      type:       "video",
+      offer:      peer.localDescription,
+      callerName: callerName || "",
+    });
+  };
+
+  // ANSWER CALL — RECEIVER
+
+  const answerCall = async () => {
+    const pending = pendingOfferRef.current;
+    if (!pending?.offer) { console.warn("[answerCall] No pending offer"); return; }
+
+    const isVideo = (pending.type || "video") === "video";
+    setCallType(pending.type || "video");
+    setCallAccepted(true);
+
+    await new Promise(r => setTimeout(r, 150));
+
+    const localStream = await getLocalStream(isVideo);
+    const peer        = createPeerConnection(pending.senderMongoId);
+
+    localStream.getTracks().forEach(t => {
+      peer.addTrack(t, localStream);
+      console.log("[WebRTC] → receiver added track:", t.kind);
+    });
+
+    await peer.setRemoteDescription(new RTCSessionDescription(pending.offer));
+    console.log("[WebRTC] ✅ Remote desc set on RECEIVER");
+
+    isRemoteDescSetRef.current = true;
+    await drainRemoteIce(peer);
+
+    const answer = await peer.createAnswer();
+    await peer.setLocalDescription(answer);
+
+    console.log("[Signal] → webrtc-answer from:", myId(), "to:", pending.senderMongoId);
+    socket.emit("webrtc-answer", {
+      from:   myId(),
+      to:     pending.senderMongoId,
+      answer: peer.localDescription,
+    });
+
+    flushLocalIce(pending.senderMongoId);
+    pendingOfferRef.current = null;
+  };
+
+
+  // CONTROLS
+
+  const toggleAudio = () =>
+    streamRef.current?.getAudioTracks().forEach(t => { t.enabled = !t.enabled; });
+
+  const toggleVideo = () =>
+    streamRef.current?.getVideoTracks().forEach(t => { t.enabled = !t.enabled; });
+
+  const shareScreen = async () => {
+    try {
+      const screen = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const track  = screen.getVideoTracks()[0];
+      const sender = connectionRef.current?.getSenders().find(s => s.track?.kind === "video");
+      if (sender) await sender.replaceTrack(track);
+      if (myVideo.current) myVideo.current.srcObject = screen;
+      track.onended = () => {
+        const cam = streamRef.current?.getVideoTracks()[0];
+        const s2  = connectionRef.current?.getSenders().find(s => s.track?.kind === "video");
+        if (s2 && cam) s2.replaceTrack(cam);
+        if (myVideo.current) myVideo.current.srcObject = streamRef.current;
+      };
+    } catch (err) { console.error("Screen share error:", err); }
+  };
+
+  const leaveCall = () => {
+    const to = call.from || callTo;
+    if (to) socket.emit("end-call", { from: myId(), to });
+    resetCall();
+  };
+
+  const resetCall = () => {
+    setCallEnded(true);
+    setCallAccepted(false);
+    setIsCalling(false);
+    pendingOfferRef.current    = null;
+    remoteIceBuffer.current    = [];
+    localIceBuffer.current     = [];
+    isRemoteDescSetRef.current = false;
+    remoteUserIdRef.current    = null;
+    connectionRef.current?.close();
+    connectionRef.current      = null;
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current          = null;
+    remoteStreamRef.current    = null;
+    setStream(null);
+    setRemoteStream(null);
+    setCall({});
+    setCallTo(null);
+  };
+
+  return (
+    <CallContext.Provider value={{
+      call, callAccepted, callEnded, isCalling, callType,
+      myVideo, userVideo, stream, remoteStream,
+      callUser, answerCall, leaveCall,
+      toggleAudio, toggleVideo, shareScreen,
+      reattachStreams,
+    }}>
+      {children}
+    </CallContext.Provider>
+  );
+};

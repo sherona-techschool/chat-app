@@ -24,6 +24,7 @@ exports.register = async (req, res) => {
         }
 
         const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+        console.log(existingUser, ' Test')
         if (existingUser) {
             return res.status(400).json({ message: 'User already exists (email or username)' });
         }
@@ -73,12 +74,10 @@ exports.login = async (req, res) => {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-        // Check password
-        // If the user has a hashed password (from registration)
+        
         const isMatch = await bcrypt.compare(password, user.password);
 
-        // Fallback for plain text passwords (if any exist from manual creation or old logic)
-        // This is useful for dev/transition but strictly should be removed in prod
+        
         const isPlainMatch = user.password === password;
 
         if (!isMatch && !isPlainMatch) {
@@ -108,8 +107,6 @@ exports.updateProfile = async (req, res) => {
         const { userId } = req.params;
         const { fullName, bio, status, avatar } = req.body;
 
-        // Ensure user updating is the one logged in (Middleware usually handles this, but simple check here if needed)
-        // For now trusting the ID passed in params matches the token (verified in middleware if we had one)
 
         const user = await User.findById(userId);
         if (!user) {

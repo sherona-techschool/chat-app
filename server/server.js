@@ -34,7 +34,7 @@ app.get('/test', (req, res) => {
 
 const io = new Server(server, {
     cors: {
-        origin: "*", // Allow all for dev
+        origin: "*",
         methods: ["GET", "POST"]
     }
 });

@@ -9,7 +9,7 @@ const storage = multer.diskStorage({
         cb(null, 'uploads/');
     },
     filename: (req, file, cb) => {
-        // Unique name: timestamp-random.ext
+      
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         cb(null, uniqueSuffix + path.extname(file.originalname));
     }
@@ -17,7 +17,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    limits: { fileSize: 5 * 1024 * 1024 }, 
     fileFilter: (req, file, cb) => {
         const filetypes = /jpeg|jpg|png|gif/;
         const mimetype = filetypes.test(file.mimetype);
@@ -37,9 +37,7 @@ router.post('/', upload.single('file'), (req, res) => {
             return res.status(400).json({ message: 'No file uploaded' });
         }
 
-        // Return the URL to access the file
-        // Assuming server runs on the same host, relative path logic might be needed on frontend
-        // or return full URL.
+      
         const fileUrl = `/uploads/${req.file.filename}`;
 
         res.status(200).json({

@@ -6,7 +6,7 @@ module.exports = (io, socket, users) => {
     // SEND MESSAGE
     socket.on('send-message', async ({ to, message, type = 'text', fileUrl = '' }) => {
         try {
-            const from = socket.decoded.userId; // Securely get sender from token
+            const from = socket.decoded.userId; 
 
             if (!to || !mongoose.isValidObjectId(to)) {
                 console.error(`Invalid receiver ID: ${to}`);

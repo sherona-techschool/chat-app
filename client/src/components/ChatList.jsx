@@ -18,9 +18,7 @@ const ChatList = ({ users, onSelectUser, activeUser, isConnected, myId }) => {
     const fetchCallLogs = async () => {
         try {
             setLoadingCalls(true);
-            // Assuming myId is passed or we get it from localStorage/context. 
-            // If not passed safely, we might need to get it from where Auth stores it.
-            // For now, let's try to use the prop if available, or fallback to localStorage user.
+      
             const storedUser = JSON.parse(localStorage.getItem('chat-user'));
             const currentUserId = myId || (storedUser ? storedUser._id : null);
 
@@ -256,7 +254,7 @@ const styles = {
         width: '48px',
         height: '48px',
         borderRadius: '50%',
-        backgroundColor: '#e2e8f0', // random colors better
+        backgroundColor: '#e2e8f0',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',

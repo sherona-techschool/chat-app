@@ -95,7 +95,7 @@ const Chat = ({ userId, onLogout }) => {
             } catch (err) {
                 console.error("Failed to fetch history", err);
             }
-        };
+        };``
 
         setMessages([]);
         fetchHistory();
@@ -142,13 +142,12 @@ const Chat = ({ userId, onLogout }) => {
             isOnline: onlineUsers.includes(u._id)
         }));
 
-    // Rendering Logic for Mobile
     const showChatList = !isMobile || (isMobile && !activeChat);
     const showChatWindow = !isMobile || (isMobile && activeChat);
 
     return (
         <div className="app-container">
-            {/* NavRail: Hide on mobile when chat is active? Or show bottom bar? For now, keep it on left or hide */}
+        
             <div className={`nav-rail-wrapper ${isMobile ? 'mobile-hidden' : ''}`}>
                 <NavRail onLogout={onLogout} onProfileClick={() => setShowProfileModal(true)} />
             </div>
