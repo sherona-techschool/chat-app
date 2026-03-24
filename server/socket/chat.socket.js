@@ -21,7 +21,7 @@ module.exports = (io, socket, users) => {
                 const savedMsg = await Message.create({
                     sender: from,
                     receiver: to,
-                    content: message || 'Image', // Fallback text for notifications
+                    content: message || 'Image', 
                     type,
                     fileUrl,
                     delivered: true

@@ -1,4 +1,3 @@
-
 import React, {
   createContext, useState, useRef, useEffect, useContext, useCallback
 } from "react";
@@ -29,7 +28,7 @@ const getRTCConfig = () => {
 };
 
 export const CallProvider = ({ children }) => {
-  const { socket } = useContext(SocketContext);
+  const { socket, myMongoId } = useContext(SocketContext);
 
   const connectionRef        = useRef(null);
   const myVideo              = useRef(null);
@@ -37,18 +36,26 @@ export const CallProvider = ({ children }) => {
   const pendingOfferRef      = useRef(null);
   const streamRef            = useRef(null);
   const remoteStreamRef      = useRef(null);
-  const myMongoIdRef         = useRef(null);
+  const myMongoIdRef         = useRef(null); 
   const remoteUserIdRef      = useRef(null);
   const remoteIceBuffer      = useRef([]);
   const localIceBuffer       = useRef([]);
   const isRemoteDescSetRef   = useRef(false);
+
+
+  useEffect(() => {
+    if (myMongoId) {
+      myMongoIdRef.current = myMongoId;
+      console.log("[CallContext] ✅ myMongoId ready:", myMongoId);
+    }
+  }, [myMongoId]);
 
   const [call,         setCall]         = useState({});
   const [callAccepted, setCallAccepted] = useState(false);
   const [callEnded,    setCallEnded]    = useState(false);
   const [stream,       setStream]       = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
-  const [callType,     setCallType]     = useState("video");
+  const [callType,     setCallType]     = useState(null); 
   const [callTo,       setCallTo]       = useState(null);
   const [isCalling,    setIsCalling]    = useState(false);
 
@@ -69,9 +76,9 @@ export const CallProvider = ({ children }) => {
     const buf = localIceBuffer.current;
     if (buf.length > 0) {
       console.log(`[ICE] flushing ${buf.length} local candidates to`, toMongoId);
-      buf.forEach(candidate => {
-        socket.emit("ice-candidate", { from: myId(), to: toMongoId, candidate });
-      });
+      buf.forEach(candidate =>
+        socket.emit("ice-candidate", { from: myId(), to: toMongoId, candidate })
+      );
       localIceBuffer.current = [];
     }
   }, [socket]);
@@ -89,17 +96,13 @@ export const CallProvider = ({ children }) => {
   }, []);
 
   // SOCKET LISTENERS
+  // NOTE: "user-id" listener REMOVED — handled by SocketContext now
 
   useEffect(() => {
     if (!socket) return;
 
-    socket.on("user-id", ({ userId }) => {
-      console.log("[Auth] My mongoId:", userId);
-      myMongoIdRef.current = userId;
-    });
-
     socket.on("call-user", ({ from, offer, type, callerName }) => {
-      console.log("[Signal] ← call-user from:", from, "name:", callerName);
+      console.log("[Signal] ← call-user from:", from, "type:", type, "name:", callerName);
       setCallEnded(false);
       setCallType(type || "video");
       setCall({ isReceivingCall: true, from, type, callerName });
@@ -113,8 +116,7 @@ export const CallProvider = ({ children }) => {
       if (!pc) return;
       const state = pc.signalingState;
       if (state === "stable" || state === "closed") {
-        console.warn("[WebRTC] answer ignored, state:", state);
-        return;
+        console.warn("[WebRTC] answer ignored, state:", state); return;
       }
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
@@ -122,31 +124,22 @@ export const CallProvider = ({ children }) => {
         isRemoteDescSetRef.current = true;
         await drainRemoteIce(pc);
         flushLocalIce(from);
-      } catch (err) {
-        console.error("[WebRTC] setRemoteDescription failed:", err);
-      }
+      } catch (err) { console.error("[WebRTC] setRemoteDescription failed:", err); }
     });
 
     socket.on("ice-candidate", async ({ candidate }) => {
       if (!candidate) return;
       const pc = connectionRef.current;
       if (!pc || !isRemoteDescSetRef.current) {
-        console.log("[ICE] buffering remote candidate");
-        remoteIceBuffer.current.push(candidate);
-        return;
+        remoteIceBuffer.current.push(candidate); return;
       }
-      try {
-        await pc.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (err) {
-        if (!err.message?.includes("end-of-candidates"))
-          console.warn("[ICE] addIceCandidate error:", err.message);
-      }
+      try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); }
+      catch (err) { if (!err.message?.includes("end-of-candidates")) console.warn("[ICE]", err.message); }
     });
 
     socket.on("end-call", () => resetCall());
 
     return () => {
-      socket.off("user-id");
       socket.off("call-user");
       socket.off("webrtc-answer");
       socket.off("ice-candidate");
@@ -154,8 +147,7 @@ export const CallProvider = ({ children }) => {
     };
   }, [socket, drainRemoteIce, flushLocalIce]);
 
-  
-  // CREATE PEER CONNECTION
+  // CREATE PEER CONNECTION — unchanged from your working video call
 
   const createPeerConnection = (remoteMongoId) => {
     if (connectionRef.current) {
@@ -200,7 +192,7 @@ export const CallProvider = ({ children }) => {
     pc.onconnectionstatechange = () => {
       const s = pc.connectionState;
       console.log("[WebRTC] connectionState:", s);
-      if (s === "connected") console.log("[WebRTC] ✅ Video flowing!");
+      if (s === "connected") console.log("[WebRTC] ✅ Connected!");
       if (s === "failed") pc.restartIce();
       if (s === "disconnected") {
         setTimeout(() => {
@@ -223,41 +215,47 @@ export const CallProvider = ({ children }) => {
 
 
   // GET LOCAL STREAM
+  // videoEnabled = true  → camera + mic   → used by video call
+  // videoEnabled = false → mic ONLY       → used by audio call (NO camera prompt)
 
   const getLocalStream = async (videoEnabled) => {
     if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
-    const s = await navigator.mediaDevices.getUserMedia({
-      video: videoEnabled ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false,
-      audio: { echoCancellation: true, noiseSuppression: true },
-    });
+
+    // ✅ video:false means browser will NEVER ask for camera permission
+    const constraints = videoEnabled
+      ? { video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: { echoCancellation: true, noiseSuppression: true } }
+      : { video: false, audio: { echoCancellation: true, noiseSuppression: true } };
+
+    console.log("[Media] getUserMedia:", JSON.stringify(constraints));
+    const s = await navigator.mediaDevices.getUserMedia(constraints);
+    console.log("[Media] got tracks:", s.getTracks().map(t => t.kind).join(", "));
+
     streamRef.current = s;
     setStream(s);
-    safeAssign(myVideo, s);
-    if (myVideo.current) myVideo.current.play().catch(() => {});
+
+    // Only attach to video element for video calls
+    if (videoEnabled) {
+      safeAssign(myVideo, s);
+      if (myVideo.current) myVideo.current.play().catch(() => {});
+    }
     return s;
   };
 
-
-  // CALL USER — SENDER
+ 
+  // VIDEO CALL — camera + mic, opens VideoCallModal (callType="video")
+  // This function is IDENTICAL to your working version, just uses getLocalStream(true)
 
   const callUser = async (id, callerName) => {
-    console.log("[callUser] calling:", id, "myId:", myId());
-
-    if (!myId()) {
-      console.error("[callUser] ❌ myMongoId not set yet — socket user-id event not received");
-      return;
-    }
-    if (!id) {
-      console.error("[callUser] ❌ target user id is empty");
-      return;
-    }
+    console.log("[callUser] 📹 video → id:", id, "myId:", myId());
+    if (!myId()) { console.error("[callUser] ❌ mongoId not set"); return; }
+    if (!id)     { console.error("[callUser] ❌ target id empty"); return; }
 
     setCallEnded(false);
     setIsCalling(true);
-    setCallType("video");
+    setCallType("video");       // ✅ VideoCallModal checks callType === "video"
     setCallTo(id);
 
-    const localStream = await getLocalStream(true);
+    const localStream = await getLocalStream(true);  // camera + mic
     const peer        = createPeerConnection(id);
 
     localStream.getTracks().forEach(t => {
@@ -267,34 +265,67 @@ export const CallProvider = ({ children }) => {
 
     await new Promise(r => setTimeout(r, 200));
 
-    const offer = await peer.createOffer({
-      offerToReceiveAudio: true,
-      offerToReceiveVideo: true,
-    });
+    const offer = await peer.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
     await peer.setLocalDescription(offer);
 
-    console.log("[Signal] → call-user from:", myId(), "to:", id);
+    console.log("[Signal] → call-user (video) from:", myId(), "to:", id);
     socket.emit("call-user", {
-      from:       myId(),
-      to:         id,
-      type:       "video",
-      offer:      peer.localDescription,
-      callerName: callerName || "",
+      from: myId(), to: id, type: "video",
+      offer: peer.localDescription, callerName: callerName || "",
     });
   };
 
-  // ANSWER CALL — RECEIVER
+
+  // ✅ NEW: AUDIO CALL — mic ONLY, opens AudioCallModal (callType="audio")
+  // Browser will NEVER request camera permission
+
+  const audioCallUser = async (id, callerName) => {
+    console.log("[audioCallUser] 📞 audio → id:", id, "myId:", myId());
+    if (!myId()) { console.error("[audioCallUser] ❌ mongoId not set"); return; }
+    if (!id)     { console.error("[audioCallUser] ❌ target id empty"); return; }
+
+    setCallEnded(false);
+    setIsCalling(true);
+    setCallType("audio");       // ✅ AudioCallModal checks callType === "audio"
+    setCallTo(id);
+
+    const localStream = await getLocalStream(false); // ✅ mic only — no camera ever
+    const peer        = createPeerConnection(id);
+
+    localStream.getTracks().forEach(t => {
+      peer.addTrack(t, localStream);
+      console.log("[WebRTC] → added track:", t.kind); // will only print "audio"
+    });
+
+    await new Promise(r => setTimeout(r, 200));
+
+    const offer = await peer.createOffer({
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: false,  // ✅ no video in SDP at all
+    });
+    await peer.setLocalDescription(offer);
+
+    console.log("[Signal] → call-user (audio) from:", myId(), "to:", id);
+    socket.emit("call-user", {
+      from: myId(), to: id, type: "audio",  // ✅ receiver reads type to open AudioCallModal
+      offer: peer.localDescription, callerName: callerName || "",
+    });
+  };
+
+  // ANSWER CALL — handles BOTH video and audio automatically
+  // Reads pending.type to know which stream constraints to use
 
   const answerCall = async () => {
     const pending = pendingOfferRef.current;
     if (!pending?.offer) { console.warn("[answerCall] No pending offer"); return; }
 
-    const isVideo = (pending.type || "video") === "video";
+    const isVideo = pending.type === "video";
     setCallType(pending.type || "video");
     setCallAccepted(true);
 
     await new Promise(r => setTimeout(r, 150));
 
+    // ✅ audio call answer → mic only (no camera prompt on receiver side either)
     const localStream = await getLocalStream(isVideo);
     const peer        = createPeerConnection(pending.senderMongoId);
 
@@ -314,9 +345,7 @@ export const CallProvider = ({ children }) => {
 
     console.log("[Signal] → webrtc-answer from:", myId(), "to:", pending.senderMongoId);
     socket.emit("webrtc-answer", {
-      from:   myId(),
-      to:     pending.senderMongoId,
-      answer: peer.localDescription,
+      from: myId(), to: pending.senderMongoId, answer: peer.localDescription,
     });
 
     flushLocalIce(pending.senderMongoId);
@@ -324,8 +353,8 @@ export const CallProvider = ({ children }) => {
   };
 
 
-  // CONTROLS
-
+  // CONTROLS — unchanged
+  
   const toggleAudio = () =>
     streamRef.current?.getAudioTracks().forEach(t => { t.enabled = !t.enabled; });
 
@@ -350,7 +379,7 @@ export const CallProvider = ({ children }) => {
 
   const leaveCall = () => {
     const to = call.from || callTo;
-    if (to) socket.emit("end-call", { from: myId(), to });
+    if (to) socket.emit("end-call", { from: myId(), to, callType, duration: 0 });
     resetCall();
   };
 
@@ -358,27 +387,30 @@ export const CallProvider = ({ children }) => {
     setCallEnded(true);
     setCallAccepted(false);
     setIsCalling(false);
+    setCallType(null);
+    setCallTo(null);
+    setCall({});
+    setStream(null);
+    setRemoteStream(null);
     pendingOfferRef.current    = null;
     remoteIceBuffer.current    = [];
     localIceBuffer.current     = [];
     isRemoteDescSetRef.current = false;
     remoteUserIdRef.current    = null;
     connectionRef.current?.close();
-    connectionRef.current      = null;
+    connectionRef.current   = null;
     streamRef.current?.getTracks().forEach(t => t.stop());
-    streamRef.current          = null;
-    remoteStreamRef.current    = null;
-    setStream(null);
-    setRemoteStream(null);
-    setCall({});
-    setCallTo(null);
+    streamRef.current       = null;
+    remoteStreamRef.current = null;
   };
 
   return (
     <CallContext.Provider value={{
       call, callAccepted, callEnded, isCalling, callType,
       myVideo, userVideo, stream, remoteStream,
-      callUser, answerCall, leaveCall,
+      callUser,       // 📹 video call
+      audioCallUser,  // 📞 audio call ← NEW
+      answerCall, leaveCall,
       toggleAudio, toggleVideo, shareScreen,
       reattachStreams,
     }}>

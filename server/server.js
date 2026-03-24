@@ -8,6 +8,7 @@ const connectDB = require('./config/db');
 const socketInit = require('./socket/index');
 const authRoutes = require('./routes/auth.routes');
 const chatRoutes = require('./routes/chat.routes');
+// const adminRoutes = require('./routes/Admin.routes');
 
 const app = express();
 const server = http.createServer(app);
@@ -24,6 +25,7 @@ app.use((req, res, next) => {
     next();
 });
 
+// app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 console.log('Mounting Chat Routes at /api...');
 app.use('/api', chatRoutes);

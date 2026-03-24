@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import Auth from './pages/Auth';
 import Chat from './pages/Chat';
 import './styles/theme.css';
+// import AdminDashboard from './pages/Admindashboard';
+
+
 
 function App() {
   const [userId, setUserId] = useState(localStorage.getItem('userId') || null);
@@ -19,6 +22,7 @@ function App() {
       ) : (
         <Chat userId={userId} onLogout={handleLogout} />
       )}
+     
     </div>
   );
 }
