@@ -2,14 +2,14 @@
 //unread message
 
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { SocketContext } from '../context/SocketContext';
-import { CallContext } from '../context/CallContext';
-import ChatList from '../components/ChatList';
-import ChatWindow from '../components/ChatWindow';
-import VideoCallModal from '../components/VideoCallModal';
-import AudioCallModal from '../components/AudioCallModal';
-import NavRail from '../components/NavRail';
-import ProfileModal from '../components/ProfileModal';
+import { SocketContext } from '../context/SocketContext.jsx';
+import { CallContext } from '../context/CallContext.jsx';
+import ChatList from '../components/ChatList.jsx';
+import ChatWindow from '../components/ChatWindow.jsx';
+import VideoCallModal from '../components/VideoCallModal.jsx';
+import AudioCallModal from '../components/AudioCallModal.jsx';
+import NavRail from '../components/NavRail.jsx';
+import ProfileModal from '../components/ProfileModal.jsx';
 
 const Chat = ({ userId, onLogout }) => {
     const { socket, isConnected, connectSocket } = useContext(SocketContext);

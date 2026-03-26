@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useContext } from 'react';
-import MessageInput from './MessageInput';
-import { CallContext } from '../context/CallContext';
+import MessageInput from './MessageInput.jsx';
+import { CallContext } from '../context/CallContext.jsx';
 import {
     BsCameraVideo, BsTelephone, BsSearch,
     BsThreeDotsVertical, BsEmojiSmile, BsMic,

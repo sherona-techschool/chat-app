@@ -1,7 +1,7 @@
 
 
 import React, { useContext, useEffect, useState } from "react";
-import { CallContext } from "../context/CallContext";
+import { CallContext } from "../context/CallContext.jsx";
 import {
   FiMic, FiMicOff, FiVideo, FiVideoOff,
   FiMonitor, FiPhoneOff, FiPhoneIncoming,

@@ -1,8 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { SocketProvider } from './context/SocketContext';
-import { CallProvider } from './context/CallContext';
+import { SocketProvider } from './context/SocketContext.jsx';
+import { CallProvider } from './context/CallContext.jsx';
 import './styles/theme.css'; 
 
 ReactDOM.createRoot(document.getElementById('root')).render(

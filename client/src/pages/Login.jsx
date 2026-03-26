@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { SocketContext } from '../context/SocketContext';
+import { SocketContext } from '../context/SocketContext.jsx';
 import '../styles/theme.css';
 
 const Login = ({ onLogin }) => {

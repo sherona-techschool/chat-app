@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import Auth from './pages/Auth';
-import Chat from './pages/Chat';
+import Auth from './pages/Auth.jsx';
+import Chat from './pages/Chat.jsx';
 import './styles/theme.css';
 // import AdminDashboard from './pages/Admindashboard';
 

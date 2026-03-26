@@ -1,7 +1,7 @@
 import React, {
   createContext, useState, useRef, useEffect, useContext, useCallback
 } from "react";
-import { SocketContext } from "./SocketContext";
+import { SocketContext } from "./SocketContext.jsx";
 
 export const CallContext = createContext();
 

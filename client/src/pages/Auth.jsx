@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import '../styles/theme.css';
-import ForgotPasswordModal from './ForgotPasswordModal'; // adjust path if needed
+import ForgotPasswordModal from './ForgotPasswordModal.jsx'; // adjust path if needed
 
 const Auth = ({ onLogin }) => {
     const [isLogin,  setIsLogin]  = useState(true);

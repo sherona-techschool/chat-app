@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState, useRef } from "react";
-import { CallContext } from "../context/CallContext";
+import { CallContext } from "../context/CallContext.jsx";
 import { FiMic, FiMicOff, FiPhoneOff, FiPhone } from "react-icons/fi";
 
 // AudioCallModal
