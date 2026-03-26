@@ -7,7 +7,7 @@ import { CallContext } from '../context/CallContext.jsx';
 import ChatList from '../components/ChatList.jsx';
 import ChatWindow from '../components/ChatWindow.jsx';
 import VideoCallModal from '../components/VideoCallModal.jsx';
-import AudioCallModal from '../components/AudioCallModal.jsx';
+import AudioCallModal from '../components/AudiocallsModal.jsx';
 import NavRail from '../components/NavRail.jsx';
 import ProfileModal from '../components/ProfileModal.jsx';
 
