@@ -13,7 +13,9 @@ const chatRoutes = require('./routes/chat.routes');
 const app = express();
 const server = http.createServer(app);
 
-app.use(cors());
+app.use(cors({
+    origin: ['http://localhost:5173', 'https://chat-app-nine-eta-10.vercel.app/']
+}));
 app.use(express.json());
 
 // Request logging middleware
