@@ -44,7 +44,7 @@ const io = new Server(server, {
 // Initialize Socket.IO and RabbitMQ
 connectDB();
 connectRabbitMQ().then(() => {
-    console.log('RabbitMQ connected');
+    console.log('RabbitMQ connected...');
     socketInit(io);
 }).catch(err => {
     console.error('Failed to connect to RabbitMQ', err);
