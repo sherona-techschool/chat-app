@@ -13,8 +13,18 @@ const chatRoutes = require('./routes/chat.routes');
 const app = express();
 const server = http.createServer(app);
 
+// app.use(cors({
+//     origin: ['http://localhost:5173', 'https://chat-app-nine-eta-10.vercel.app/']
+// }));
+
 app.use(cors({
-    origin: ['http://localhost:5173', 'https://chat-app-nine-eta-10.vercel.app/']
+    origin: function(origin, callback) {
+        if(!origin || origin.endsWith('.vercel.app')) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    }
 }));
 app.use(express.json());
 
